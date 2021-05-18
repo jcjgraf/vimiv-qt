@@ -91,22 +91,50 @@ def _gen_keybinding_rows(bindings):
     return header + rows
 
 
-def generate_commandline_options():
-    """Generate file including the command line options."""
+def generate_commandline_options(for_man=True):
+    """Generate file including the command line options.
+
+    Args:
+        for_man: True if generate for manpage, false if for documentation.
+    """
+
     argparser = parser.get_argparser()
     groups, titles = _get_options(argparser)
     # Synopsis
-    filename_synopsis = "docs/manpage/synopsis.rstsrc"
+    filename_synopsis = (
+        "docs/manpage/synopsis.rstsrc"
+        if for_man
+        else "docs/documentation/cl_options/synopsis.rstsrc"
+    )
     with open(filename_synopsis, "w") as f:
         synopsis_options = ["[%s]" % (title) for title in titles]
         synopsis = "**vimiv** %s" % (" ".join(synopsis_options))
         f.write(synopsis)
     # Options
-    filename_options = "docs/manpage/options.rstsrc"
+    filename_options = (
+        "docs/manpage/options.rstsrc"
+        if for_man
+        else "docs/documentation/cl_options/options.rstsrc"
+    )
     with RSTFile(filename_options) as f:
         for title, argstr in groups.items():
-            f.write_section(title)
-            f.write(argstr)
+            if for_man:
+                f.write_section(title)
+                f.write(argstr)
+            else:
+                argstr = [s.strip() for s in argstr.splitlines() if s.strip()]
+
+                rows = [("Command", "Description")]
+                while argstr:
+                    command = argstr.pop(0)
+                    description = ""
+
+                    while argstr and argstr[0][0] != "*":
+                        description += argstr.pop(0)
+
+                    rows.append((command, description))
+
+                f.write_table(rows, title=title.capitalize(), widths="40 60")
 
 
 def _get_options(argparser):
@@ -229,4 +257,5 @@ if __name__ == "__main__":
     generate_settings()
     generate_keybindings()
     generate_commandline_options()
+    generate_commandline_options(False)
     generate_plugins()
